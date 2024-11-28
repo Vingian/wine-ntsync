@@ -54,6 +54,7 @@ if [ $(echo "$WINE_VERSION > $STAGING_VERSION" | bc -l) -eq 0 ] && [[ -z "$HAVE_
 		pushd wine-tkg-git/wine-tkg-git
 		sed -i '/_use_staging=/s/true/false/' customization.cfg
 		yes "" | ./non-makepkg-build.sh || exit 0
+  		grep -q ' FAILED ' prepare.log >/dev/null 2>&1 && exit 0
 		popd
 		mv wine-tkg-git/wine-tkg-git/src/wine-git tkg-wine
 		rm -rf wine-tkg-git/wine-tkg-git/src/*
@@ -64,6 +65,7 @@ if [ $(echo "$WINE_VERSION > $STAGING_VERSION" | bc -l) -eq 0 ] && [[ -z "$HAVE_
 	pushd wine-tkg-git/wine-tkg-git
 	sed -i '/_use_staging=/s/false/true/' customization.cfg
 	yes "" | ./non-makepkg-build.sh || exit 0
+ 	grep -q ' FAILED ' prepare.log >/dev/null 2>&1 && exit 0
 	popd
 	mv wine-tkg-git/wine-tkg-git/src/wine-git tkg-staging-wine
 	rm -rf wine-tkg-git/wine-tkg-git/src/*
