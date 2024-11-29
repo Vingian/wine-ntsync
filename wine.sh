@@ -39,6 +39,9 @@ if [ $(echo "$WINE_VERSION > $STAGING_VERSION" | bc -l) -eq 0 ] && [[ -z "$HAVE_
 	sed -i '/Wine update and checkout/,/rm -rf.*git clone/s/^\(\s*\)/\1#/' non-makepkg-build.sh
 	sed -i 's/_plain_version=""/_plain_version="wine-'"${WINE_VERSION}"'"/' customization.cfg
 	sed -i 's/_staging_version=""/_staging_version="v'"${STAGING_VERSION}"'"/' customization.cfg
+ 	sed -i '/_use_ntsync=/s/false/true/' customization.cfg
+  	sed -i '/_use_esync=/s/true/false/' customization.cfg
+   	sed -i '/_use_fsync=/s/true/false/' customization.cfg
 	sed -i '/_proton_fs_hack=/s/false/true/' customization.cfg
 	sed -i '/_win10_default=/s/false/true/' customization.cfg
 	sed -i '/_use_josh_flat_theme=/s/true/false/' customization.cfg
