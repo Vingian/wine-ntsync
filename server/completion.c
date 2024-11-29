@@ -77,6 +77,7 @@ struct completion
     struct list    wait_queue;
     unsigned int   depth;
     int            closed;
+    struct fast_sync *fast_sync;
 };
 
 static void completion_wait_dump( struct object*, int );
@@ -104,6 +105,7 @@ static const struct object_ops completion_wait_ops =
     NULL,                           /* unlink_name */
     no_open_file,                   /* open_file */
     no_kernel_obj_list,             /* get_kernel_obj_list */
+    no_get_fast_sync,               /* get_fast_sync */
     no_close_handle,                /* close_handle */
     completion_wait_destroy         /* destroy */
 };
@@ -149,12 +151,17 @@ static void completion_wait_satisfied( struct object *obj, struct wait_queue_ent
     msg = LIST_ENTRY( msg_entry, struct comp_msg, queue_entry );
     --wait->completion->depth;
     list_remove( &msg->queue_entry );
+    if (list_empty( &wait->completion->queue ))
+    {
+        fast_reset_event( wait->completion->fast_sync );
+    }
     if (wait->msg) free( wait->msg );
     wait->msg = msg;
 }
 
 static void completion_dump( struct object*, int );
 static int completion_signaled( struct object *obj, struct wait_queue_entry *entry );
+static struct fast_sync *completion_get_fast_sync( struct object *obj );
 static int completion_close_handle( struct object *obj, struct process *process, obj_handle_t handle );
 static void completion_destroy( struct object * );
 
@@ -178,6 +185,7 @@ static const struct object_ops completion_ops =
     default_unlink_name,       /* unlink_name */
     no_open_file,              /* open_file */
     no_kernel_obj_list,        /* get_kernel_obj_list */
+    completion_get_fast_sync,  /* get_fast_sync */
     completion_close_handle,   /* close_handle */
     completion_destroy         /* destroy */
 };
@@ -191,6 +199,7 @@ static void completion_destroy( struct object *obj)
     {
         free( tmp );
     }
+    if (completion->fast_sync) release_object( completion->fast_sync );
 }
 
 static void completion_dump( struct object *obj, int verbose )
@@ -261,6 +270,16 @@ static struct completion_wait *create_completion_wait( struct thread *thread )
     return wait;
 }
 
+static struct fast_sync *completion_get_fast_sync( struct object *obj )
+{
+    struct completion *completion = (struct completion *)obj;
+
+    if (!completion->fast_sync)
+        completion->fast_sync = fast_create_event( FAST_SYNC_MANUAL_SERVER, !list_empty( &completion->queue ) );
+    if (completion->fast_sync) grab_object( completion->fast_sync );
+    return completion->fast_sync;
+}
+
 static struct completion *create_completion( struct object *root, const struct unicode_str *name,
                                              unsigned int attr, unsigned int concurrent,
                                              const struct security_descriptor *sd )
@@ -275,6 +294,7 @@ static struct completion *create_completion( struct object *root, const struct u
             list_init( &completion->wait_queue );
             completion->depth = 0;
             completion->closed = 0;
+            completion->fast_sync = NULL;
         }
     }
 
@@ -308,6 +328,7 @@ void add_completion( struct completion *completion, apc_param_t ckey, apc_param_
         if (list_empty( &completion->queue )) return;
     }
     if (!list_empty( &completion->queue )) wake_up( &completion->obj, 0 );
+    fast_set_event( completion->fast_sync );
 }
 
 /* create a completion */
@@ -404,6 +425,8 @@ DECL_HANDLER(remove_completion)
         reply->information = msg->information;
         free( msg );
         reply->wait_handle = 0;
+        if (list_empty( &completion->queue ))
+            fast_reset_event( completion->fast_sync );
     }
 
     release_object( completion );
