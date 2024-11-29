@@ -74,13 +74,16 @@ ANY                     (.)
 BlendState              {return KW_BLENDSTATE;          }
 break                   {return KW_BREAK;               }
 Buffer                  {return KW_BUFFER;              }
+ByteAddressBuffer       {return KW_BYTEADDRESSBUFFER;   }
 case                    {return KW_CASE;                }
 cbuffer                 {return KW_CBUFFER;             }
 centroid                {return KW_CENTROID;            }
 column_major            {return KW_COLUMN_MAJOR;        }
 ComputeShader           {return KW_COMPUTESHADER;       }
 compile                 {return KW_COMPILE;             }
+CompileShader           {return KW_COMPILESHADER;       }
 const                   {return KW_CONST;               }
+ConstructGSWithSO       {return KW_CONSTRUCTGSWITHSO;   }
 continue                {return KW_CONTINUE;            }
 DepthStencilState       {return KW_DEPTHSTENCILSTATE;   }
 DepthStencilView        {return KW_DEPTHSTENCILVIEW;    }
@@ -88,7 +91,6 @@ default                 {return KW_DEFAULT;             }
 discard                 {return KW_DISCARD;             }
 DomainShader            {return KW_DOMAINSHADER;        }
 do                      {return KW_DO;                  }
-double                  {return KW_DOUBLE;              }
 else                    {return KW_ELSE;                }
 export                  {return KW_EXPORT;              }
 extern                  {return KW_EXTERN;              }
@@ -102,6 +104,7 @@ if                      {return KW_IF;                  }
 in                      {return KW_IN;                  }
 inline                  {return KW_INLINE;              }
 inout                   {return KW_INOUT;               }
+LineStream              {return KW_LINESTREAM;          }
 linear                  {return KW_LINEAR;              }
 matrix                  {return KW_MATRIX;              }
 namespace               {return KW_NAMESPACE;           }
@@ -112,6 +115,7 @@ out                     {return KW_OUT;                 }
 packoffset              {return KW_PACKOFFSET;          }
 pass                    {return KW_PASS;                }
 PixelShader             {return KW_PIXELSHADER;         }
+PointStream             {return KW_POINTSTREAM;         }
 pixelshader             {return KW_PIXELSHADER;         }
 RasterizerOrderedBuffer           {return KW_RASTERIZERORDEREDBUFFER;            }
 RasterizerOrderedStructuredBuffer {return KW_RASTERIZERORDEREDSTRUCTUREDBUFFER;  }
@@ -126,6 +130,7 @@ RenderTargetView        {return KW_RENDERTARGETVIEW;    }
 return                  {return KW_RETURN;              }
 row_major               {return KW_ROW_MAJOR;           }
 RWBuffer                {return KW_RWBUFFER;            }
+RWByteAddressBuffer     {return KW_RWBYTEADDRESSBUFFER; }
 RWStructuredBuffer      {return KW_RWSTRUCTUREDBUFFER;  }
 RWTexture1D             {return KW_RWTEXTURE1D;         }
 RWTexture1DArray        {return KW_RWTEXTURE1DARRAY;    }
@@ -141,6 +146,7 @@ samplerCUBE             {return KW_SAMPLERCUBE;         }
 SamplerState            {return KW_SAMPLER;             }
 sampler_state           {return KW_SAMPLER_STATE;       }
 shared                  {return KW_SHARED;              }
+snorm                   {return KW_SNORM;               }
 stateblock              {return KW_STATEBLOCK;          }
 stateblock_state        {return KW_STATEBLOCK_STATE;    }
 static                  {return KW_STATIC;              }
@@ -166,10 +172,12 @@ texture3D               {return KW_TEXTURE3D;           }
 TextureCube             {return KW_TEXTURECUBE;         }
 textureCUBE             {return KW_TEXTURECUBE;         }
 TextureCubeArray        {return KW_TEXTURECUBEARRAY;    }
+TriangleStream          {return KW_TRIANGLESTREAM;      }
 true                    {return KW_TRUE;                }
 typedef                 {return KW_TYPEDEF;             }
 unsigned                {return KW_UNSIGNED;            }
 uniform                 {return KW_UNIFORM;             }
+unorm                   {return KW_UNORM;               }
 vector                  {return KW_VECTOR;              }
 VertexShader            {return KW_VERTEXSHADER;        }
 vertexshader            {return KW_VERTEXSHADER;        }
