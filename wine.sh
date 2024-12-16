@@ -8,10 +8,10 @@ STAGING_EXCLUDE='-W ntdll-ForceBottomUpAlloc'
 WINE_VERSION=($(curl -s 'https://gitlab.winehq.org/api/v4/projects/5/releases' | jq -r '.[0].tag_name' 2>/dev/null | grep -o '[0-9.]*'))
 STAGING_VERSION=($(curl -s 'https://gitlab.winehq.org/api/v4/projects/231/repository/tags' | jq -r '.[0].name' 2>/dev/null | grep -o '[0-9.]*'))
 
-[ ${#WINE_VERSION[@]} -gt 1 ] && WINE_RC_VERSION=${WINE_VERSION[1]} || WINE_RC_VERSION='9999'
-[ ${#WINE_VERSION[@]} -ge 1 ] && WINE_VERSION=${WINE_VERSION[0]} || WINE_VERSION=''
-[ ${#STAGING_VERSION[@]} -gt 1 ] && STAGING_RC_VERSION=${STAGING_VERSION[1]} || STAGING_RC_VERSION='9999'
-[ ${#STAGING_VERSION[@]} -ge 1 ] && STAGING_VERSION=${STAGING_VERSION[0]} || STAGING_VERSION=''
+[ ${#WINE_VERSION[@]} -gt 1 ] && WINE_RC_VERSION="${WINE_VERSION[1]}" || WINE_RC_VERSION='9999'
+[ ${#WINE_VERSION[@]} -ge 1 ] && WINE_VERSION="${WINE_VERSION[0]}" || WINE_VERSION=''
+[ ${#STAGING_VERSION[@]} -gt 1 ] && STAGING_RC_VERSION="${STAGING_VERSION[1]}" || STAGING_RC_VERSION='9999'
+[ ${#STAGING_VERSION[@]} -ge 1 ] && STAGING_VERSION="${STAGING_VERSION[0]}" || STAGING_VERSION=''
 
 [[ -z "$WINE_VERSION" || -z "$STAGING_VERSION" ]] && exit 0
 
