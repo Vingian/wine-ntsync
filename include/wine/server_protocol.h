@@ -5867,6 +5867,74 @@ struct get_next_thread_reply
 };
 
 
+enum fast_sync_type
+{
+    FAST_SYNC_SEMAPHORE = 1,
+    FAST_SYNC_MUTEX,
+    FAST_SYNC_AUTO_EVENT,
+    FAST_SYNC_MANUAL_EVENT,
+    FAST_SYNC_AUTO_SERVER,
+    FAST_SYNC_MANUAL_SERVER,
+    FAST_SYNC_QUEUE,
+};
+
+
+
+struct get_linux_sync_device_request
+{
+    struct request_header __header;
+    char __pad_12[4];
+};
+struct get_linux_sync_device_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
+    char __pad_12[4];
+};
+
+
+
+struct get_linux_sync_obj_request
+{
+    struct request_header __header;
+    obj_handle_t handle;
+};
+struct get_linux_sync_obj_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
+    int          type;
+    unsigned int access;
+    char __pad_20[4];
+};
+
+
+
+struct fast_select_queue_request
+{
+    struct request_header __header;
+    obj_handle_t handle;
+};
+struct fast_select_queue_reply
+{
+    struct reply_header __header;
+};
+
+
+
+struct fast_unselect_queue_request
+{
+    struct request_header __header;
+    obj_handle_t handle;
+    int          signaled;
+    char __pad_20[4];
+};
+struct fast_unselect_queue_reply
+{
+    struct reply_header __header;
+};
+
+
 
 struct set_keyboard_repeat_request
 {
@@ -5879,6 +5947,19 @@ struct set_keyboard_repeat_reply
 {
     struct reply_header __header;
     int enable;
+    char __pad_12[4];
+};
+
+
+struct get_fast_alert_event_request
+{
+    struct request_header __header;
+    char __pad_12[4];
+};
+struct get_fast_alert_event_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
     char __pad_12[4];
 };
 
@@ -6176,7 +6257,12 @@ enum request
     REQ_suspend_process,
     REQ_resume_process,
     REQ_get_next_thread,
+    REQ_get_linux_sync_device,
+    REQ_get_linux_sync_obj,
+    REQ_fast_select_queue,
+    REQ_fast_unselect_queue,
     REQ_set_keyboard_repeat,
+    REQ_get_fast_alert_event,
     REQ_NB_REQUESTS
 };
 
@@ -6475,7 +6561,12 @@ union generic_request
     struct suspend_process_request suspend_process_request;
     struct resume_process_request resume_process_request;
     struct get_next_thread_request get_next_thread_request;
+    struct get_linux_sync_device_request get_linux_sync_device_request;
+    struct get_linux_sync_obj_request get_linux_sync_obj_request;
+    struct fast_select_queue_request fast_select_queue_request;
+    struct fast_unselect_queue_request fast_unselect_queue_request;
     struct set_keyboard_repeat_request set_keyboard_repeat_request;
+    struct get_fast_alert_event_request get_fast_alert_event_request;
 };
 union generic_reply
 {
@@ -6772,9 +6863,14 @@ union generic_reply
     struct suspend_process_reply suspend_process_reply;
     struct resume_process_reply resume_process_reply;
     struct get_next_thread_reply get_next_thread_reply;
+    struct get_linux_sync_device_reply get_linux_sync_device_reply;
+    struct get_linux_sync_obj_reply get_linux_sync_obj_reply;
+    struct fast_select_queue_reply fast_select_queue_reply;
+    struct fast_unselect_queue_reply fast_unselect_queue_reply;
     struct set_keyboard_repeat_reply set_keyboard_repeat_reply;
+    struct get_fast_alert_event_reply get_fast_alert_event_reply;
 };
 
-#define SERVER_PROTOCOL_VERSION 854
+#define SERVER_PROTOCOL_VERSION 855
 
 #endif /* __WINE_WINE_SERVER_PROTOCOL_H */
