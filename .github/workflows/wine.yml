@@ -14,7 +14,7 @@ jobs:
       - name: wine
         run: |
           pacman -Sy --needed --noconfirm archlinux-keyring
-          pacman -Sy --needed --noconfirm git python wget jq bc
+          pacman -Sy --needed --noconfirm git python wget jq
           chmod +x wine.sh && ./wine.sh
         env:
           GH_REPO: ${{ github.repository }}
