@@ -23,7 +23,7 @@ if [[ -n "$GH_REPO" && -n "$GH_TOKEN" ]]; then
 	HAVE_STAGING_VERSION=$([ "$(curl -s -w '%{http_code}' -o /dev/null "https://x-access-token:${GH_TOKEN}@api.github.com/repos/${GH_REPO}/git/refs/tags/wine-${STAGING_VERSION_TAG}-staging")" -ne 404 ] && echo 'y' || echo '')
 fi
 
-if [ $(echo "$WINE_VERSION > $STAGING_VERSION" | bc -l) -eq 0 ] && [[ -z "$HAVE_WINE_VERSION" || -z "$HAVE_STAGING_VERSION" ]]; then
+if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}"|sort -V|tail -1) == "$STAGING_VERSION_TAG" ] && [[ -z "$HAVE_WINE_VERSION" || -z "$HAVE_STAGING_VERSION" ]]; then
 	rm -rf {wine,tkg-wine,staging-wine,tkg-staging-wine,wine-staging,wine-tkg-git}
 
 	git clone -b "wine-${WINE_VERSION_TAG}" 'https://gitlab.winehq.org/wine/wine.git' || exit 0
