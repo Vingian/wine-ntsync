@@ -77,7 +77,7 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
   		fi
 		sed -i '/_use_staging=/s/true/false/' customization.cfg
 		./non-makepkg-build.sh </dev/null || exit 0
-  		grep -q ' FAILED ' prepare.log &>/dev/null && exit 0
+  		grep -q ' FAILED ' prepare.log && exit 0
 		popd
 		mv wine-tkg-git/wine-tkg-git/src/wine-git tkg-wine
 		rm -rf wine-tkg-git/wine-tkg-git/src/*
@@ -88,7 +88,7 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 	pushd wine-tkg-git/wine-tkg-git
 	sed -i '/_use_staging=/s/false/true/' customization.cfg
 	./non-makepkg-build.sh </dev/null || exit 0
- 	grep -q ' FAILED ' prepare.log &>/dev/null && exit 0
+ 	grep -q ' FAILED ' prepare.log && exit 0
 	popd
 	mv wine-tkg-git/wine-tkg-git/src/wine-git tkg-staging-wine
 	rm -rf wine-tkg-git/wine-tkg-git/src/*
