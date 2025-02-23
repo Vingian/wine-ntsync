@@ -93,6 +93,8 @@ struct thread
     data_size_t            desc_len;      /* thread description length in bytes */
     WCHAR                 *desc;          /* thread description string */
     struct completion_wait *completion_wait; /* completion port wait object the thread is associated with */
+    struct inproc_sync    *inproc_sync;   /* in-process synchronization object */
+    struct event          *inproc_alert_event; /* in-process synchronization alert event */
 };
 
 extern struct thread *current;
@@ -145,5 +147,10 @@ static inline void clear_error(void)             { set_error(0); }
 static inline void set_win32_error( unsigned int err ) { set_error( 0xc0010000 | err ); }
 
 static inline thread_id_t get_thread_id( struct thread *thread ) { return thread->id; }
+
+/* scheduler functions */
+
+extern void init_scheduler( void );
+extern void set_scheduler_priority( struct thread *thread );
 
 #endif  /* __WINE_SERVER_THREAD_H */
