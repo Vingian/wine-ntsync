@@ -40,6 +40,11 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 	cp -r wine staging-wine
 	./wine-staging/staging/patchinstall.py DESTDIR=staging-wine -a $STAGING_EXCLUDE
 
+	if [ "$FASTSYNC_PROTOCOL_VERSION_FIX" == 'true' ]; then
+		SERVER_PROTOCOL_VERSION=$(find 'wine/include' -type f \( -exec sed -n '/#define[[:space:]]\+SERVER_PROTOCOL_VERSION/{s/#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\([0-9]\+\)/\1/p;q1}' '{}' \; -o -quit \))
+		SERVER_PROTOCOL_VERSION_STAGING=$(find 'staging-wine/include' -type f \( -exec sed -n '/#define[[:space:]]\+SERVER_PROTOCOL_VERSION/{s/#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\([0-9]\+\)/\1/p;q1}' '{}' \; -o -quit \))
+	fi
+
 	git clone 'https://github.com/Frogging-Family/wine-tkg-git.git' || exit 0
 	pushd wine-tkg-git/wine-tkg-git || exit 0
 	sed -i '/_build_in_tmpfs=/s/true/false/' non-makepkg-build.sh
@@ -66,15 +71,12 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 		cp -r wine-staging wine-tkg-git/wine-tkg-git/src/wine-staging-git
 		cp -r wine wine-tkg-git/wine-tkg-git/src/wine-git
 		pushd wine-tkg-git/wine-tkg-git
-  		if [ "$FASTSYNC_PROTOCOL_VERSION_FIX" == 'true' ]; then
-	  		SERVER_PROTOCOL_VERSION=$(find 'src/wine-git/include' -type f \( -exec sed -n '/#define[[:space:]]\+SERVER_PROTOCOL_VERSION/{s/#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\([0-9]\+\)/\1/p;q1}' '{}' \; -o -quit \))
-     			echo "SERVER_PROTOCOL_VERSION=$SERVER_PROTOCOL_VERSION"
-	  		if [ -n "$SERVER_PROTOCOL_VERSION" ]; then
-				SERVER_PROTOCOL_VERSION_NEW=$((SERVER_PROTOCOL_VERSION + 1))
-				find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/-#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(-#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION}/" '{}' \;
-	   			find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/+#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(+#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_NEW}/" '{}' \;
-			fi
-  		fi
+		if [ -n "$SERVER_PROTOCOL_VERSION" ]; then
+			echo "SERVER_PROTOCOL_VERSION=$SERVER_PROTOCOL_VERSION"
+			SERVER_PROTOCOL_VERSION_NEW=$((SERVER_PROTOCOL_VERSION + 1))
+			find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/-#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(-#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION}/" '{}' \;
+			find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/+#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(+#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_NEW}/" '{}' \;
+		fi
 		sed -i '/_use_staging=/s/true/false/' customization.cfg
 		./non-makepkg-build.sh </dev/null || exit 0
   		grep -q ' FAILED ' prepare.log && exit 0
@@ -86,6 +88,12 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 	cp -r wine-staging wine-tkg-git/wine-tkg-git/src/wine-staging-git
 	cp -r wine wine-tkg-git/wine-tkg-git/src/wine-git
 	pushd wine-tkg-git/wine-tkg-git
+	if [ -n "$SERVER_PROTOCOL_VERSION_STAGING" ]; then
+		echo "SERVER_PROTOCOL_VERSION=$SERVER_PROTOCOL_VERSION_STAGING"
+		SERVER_PROTOCOL_VERSION_STAGING_NEW=$((SERVER_PROTOCOL_VERSION_STAGING + 1))
+		find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/-#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(-#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_STAGING}/" '{}' \;
+		find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/+#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(+#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_STAGING_NEW}/" '{}' \;
+	fi
 	sed -i '/_use_staging=/s/false/true/' customization.cfg
 	./non-makepkg-build.sh </dev/null || exit 0
  	grep -q ' FAILED ' prepare.log && exit 0
