@@ -5898,6 +5898,86 @@ struct set_keyboard_repeat_reply
     char __pad_12[4];
 };
 
+enum inproc_sync_type
+{
+    INPROC_SYNC_UNKNOWN,
+    INPROC_SYNC_AUTO_EVENT,
+    INPROC_SYNC_MANUAL_EVENT,
+    INPROC_SYNC_SEMAPHORE,
+    INPROC_SYNC_MUTEX,
+    INPROC_SYNC_AUTO_SERVER,
+    INPROC_SYNC_MANUAL_SERVER,
+    INPROC_SYNC_QUEUE,
+};
+
+
+
+struct get_linux_sync_device_request
+{
+    struct request_header __header;
+    char __pad_12[4];
+};
+struct get_linux_sync_device_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
+    char __pad_12[4];
+};
+
+
+
+struct get_linux_sync_obj_request
+{
+    struct request_header __header;
+    obj_handle_t handle;
+};
+struct get_linux_sync_obj_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
+    int          type;
+    unsigned int access;
+    char __pad_20[4];
+};
+
+
+
+struct select_inproc_queue_request
+{
+    struct request_header __header;
+    char __pad_12[4];
+};
+struct select_inproc_queue_reply
+{
+    struct reply_header __header;
+};
+
+
+
+struct unselect_inproc_queue_request
+{
+    struct request_header __header;
+    int          signaled;
+};
+struct unselect_inproc_queue_reply
+{
+    struct reply_header __header;
+};
+
+
+
+struct get_inproc_alert_event_request
+{
+    struct request_header __header;
+    char __pad_12[4];
+};
+struct get_inproc_alert_event_reply
+{
+    struct reply_header __header;
+    obj_handle_t handle;
+    char __pad_12[4];
+};
+
 
 enum request
 {
@@ -6194,6 +6274,11 @@ enum request
     REQ_get_next_process,
     REQ_get_next_thread,
     REQ_set_keyboard_repeat,
+    REQ_get_linux_sync_device,
+    REQ_get_linux_sync_obj,
+    REQ_select_inproc_queue,
+    REQ_unselect_inproc_queue,
+    REQ_get_inproc_alert_event,
     REQ_NB_REQUESTS
 };
 
@@ -6494,6 +6579,11 @@ union generic_request
     struct get_next_process_request get_next_process_request;
     struct get_next_thread_request get_next_thread_request;
     struct set_keyboard_repeat_request set_keyboard_repeat_request;
+    struct get_linux_sync_device_request get_linux_sync_device_request;
+    struct get_linux_sync_obj_request get_linux_sync_obj_request;
+    struct select_inproc_queue_request select_inproc_queue_request;
+    struct unselect_inproc_queue_request unselect_inproc_queue_request;
+    struct get_inproc_alert_event_request get_inproc_alert_event_request;
 };
 union generic_reply
 {
@@ -6792,8 +6882,13 @@ union generic_reply
     struct get_next_process_reply get_next_process_reply;
     struct get_next_thread_reply get_next_thread_reply;
     struct set_keyboard_repeat_reply set_keyboard_repeat_reply;
+    struct get_linux_sync_device_reply get_linux_sync_device_reply;
+    struct get_linux_sync_obj_reply get_linux_sync_obj_reply;
+    struct select_inproc_queue_reply select_inproc_queue_reply;
+    struct unselect_inproc_queue_reply unselect_inproc_queue_reply;
+    struct get_inproc_alert_event_reply get_inproc_alert_event_reply;
 };
 
-#define SERVER_PROTOCOL_VERSION 856
+#define SERVER_PROTOCOL_VERSION 857
 
 #endif /* __WINE_WINE_SERVER_PROTOCOL_H */
