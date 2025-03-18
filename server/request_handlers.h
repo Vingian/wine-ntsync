@@ -97,6 +97,7 @@ DECL_HANDLER(create_key);
 DECL_HANDLER(open_key);
 DECL_HANDLER(delete_key);
 DECL_HANDLER(flush_key);
+DECL_HANDLER(flush_key_done);
 DECL_HANDLER(enum_key);
 DECL_HANDLER(set_key_value);
 DECL_HANDLER(get_key_value);
@@ -299,7 +300,12 @@ DECL_HANDLER(suspend_process);
 DECL_HANDLER(resume_process);
 DECL_HANDLER(get_next_process);
 DECL_HANDLER(get_next_thread);
+DECL_HANDLER(get_linux_sync_device);
+DECL_HANDLER(get_linux_sync_obj);
+DECL_HANDLER(select_inproc_queue);
+DECL_HANDLER(unselect_inproc_queue);
 DECL_HANDLER(set_keyboard_repeat);
+DECL_HANDLER(get_inproc_alert_event);
 
 typedef void (*req_handler)( const void *req, void *reply );
 static const req_handler req_handlers[REQ_NB_REQUESTS] =
@@ -394,6 +400,7 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_open_key,
     (req_handler)req_delete_key,
     (req_handler)req_flush_key,
+    (req_handler)req_flush_key_done,
     (req_handler)req_enum_key,
     (req_handler)req_set_key_value,
     (req_handler)req_get_key_value,
@@ -596,7 +603,12 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_resume_process,
     (req_handler)req_get_next_process,
     (req_handler)req_get_next_thread,
+    (req_handler)req_get_linux_sync_device,
+    (req_handler)req_get_linux_sync_obj,
+    (req_handler)req_select_inproc_queue,
+    (req_handler)req_unselect_inproc_queue,
     (req_handler)req_set_keyboard_repeat,
+    (req_handler)req_get_inproc_alert_event,
 };
 
 C_ASSERT( sizeof(abstime_t) == 8 );
@@ -1164,6 +1176,13 @@ C_ASSERT( offsetof(struct delete_key_request, hkey) == 12 );
 C_ASSERT( sizeof(struct delete_key_request) == 16 );
 C_ASSERT( offsetof(struct flush_key_request, hkey) == 12 );
 C_ASSERT( sizeof(struct flush_key_request) == 16 );
+C_ASSERT( offsetof(struct flush_key_reply, timestamp_counter) == 8 );
+C_ASSERT( offsetof(struct flush_key_reply, total) == 16 );
+C_ASSERT( offsetof(struct flush_key_reply, branch_count) == 20 );
+C_ASSERT( sizeof(struct flush_key_reply) == 24 );
+C_ASSERT( offsetof(struct flush_key_done_request, timestamp_counter) == 16 );
+C_ASSERT( offsetof(struct flush_key_done_request, branch) == 24 );
+C_ASSERT( sizeof(struct flush_key_done_request) == 32 );
 C_ASSERT( offsetof(struct enum_key_request, hkey) == 12 );
 C_ASSERT( offsetof(struct enum_key_request, index) == 16 );
 C_ASSERT( offsetof(struct enum_key_request, info_class) == 20 );
@@ -1203,8 +1222,9 @@ C_ASSERT( offsetof(struct unload_registry_request, parent) == 12 );
 C_ASSERT( offsetof(struct unload_registry_request, attributes) == 16 );
 C_ASSERT( sizeof(struct unload_registry_request) == 24 );
 C_ASSERT( offsetof(struct save_registry_request, hkey) == 12 );
-C_ASSERT( offsetof(struct save_registry_request, file) == 16 );
-C_ASSERT( sizeof(struct save_registry_request) == 24 );
+C_ASSERT( sizeof(struct save_registry_request) == 16 );
+C_ASSERT( offsetof(struct save_registry_reply, total) == 8 );
+C_ASSERT( sizeof(struct save_registry_reply) == 16 );
 C_ASSERT( offsetof(struct set_registry_notification_request, hkey) == 12 );
 C_ASSERT( offsetof(struct set_registry_notification_request, event) == 16 );
 C_ASSERT( offsetof(struct set_registry_notification_request, subtree) == 20 );
@@ -2273,9 +2293,24 @@ C_ASSERT( offsetof(struct get_next_thread_request, flags) == 28 );
 C_ASSERT( sizeof(struct get_next_thread_request) == 32 );
 C_ASSERT( offsetof(struct get_next_thread_reply, handle) == 8 );
 C_ASSERT( sizeof(struct get_next_thread_reply) == 16 );
+C_ASSERT( sizeof(struct get_linux_sync_device_request) == 16 );
+C_ASSERT( offsetof(struct get_linux_sync_device_reply, handle) == 8 );
+C_ASSERT( sizeof(struct get_linux_sync_device_reply) == 16 );
+C_ASSERT( offsetof(struct get_linux_sync_obj_request, handle) == 12 );
+C_ASSERT( sizeof(struct get_linux_sync_obj_request) == 16 );
+C_ASSERT( offsetof(struct get_linux_sync_obj_reply, handle) == 8 );
+C_ASSERT( offsetof(struct get_linux_sync_obj_reply, type) == 12 );
+C_ASSERT( offsetof(struct get_linux_sync_obj_reply, access) == 16 );
+C_ASSERT( sizeof(struct get_linux_sync_obj_reply) == 24 );
+C_ASSERT( sizeof(struct select_inproc_queue_request) == 16 );
+C_ASSERT( offsetof(struct unselect_inproc_queue_request, signaled) == 12 );
+C_ASSERT( sizeof(struct unselect_inproc_queue_request) == 16 );
 C_ASSERT( offsetof(struct set_keyboard_repeat_request, enable) == 12 );
 C_ASSERT( offsetof(struct set_keyboard_repeat_request, delay) == 16 );
 C_ASSERT( offsetof(struct set_keyboard_repeat_request, period) == 20 );
 C_ASSERT( sizeof(struct set_keyboard_repeat_request) == 24 );
 C_ASSERT( offsetof(struct set_keyboard_repeat_reply, enable) == 8 );
 C_ASSERT( sizeof(struct set_keyboard_repeat_reply) == 16 );
+C_ASSERT( sizeof(struct get_inproc_alert_event_request) == 16 );
+C_ASSERT( offsetof(struct get_inproc_alert_event_reply, handle) == 8 );
+C_ASSERT( sizeof(struct get_inproc_alert_event_reply) == 16 );
