@@ -49,6 +49,10 @@
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
 #endif
+#include <sys/ioctl.h>
+#ifdef HAVE_LINUX_IOCTL_H
+#include <linux/ioctl.h>
+#endif
 #ifdef HAVE_SYS_PRCTL_H
 # include <sys/prctl.h>
 #endif
@@ -83,6 +87,22 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(server);
 
+/* just in case... */
+#undef EXT2_IOC_GETFLAGS
+#undef EXT2_IOC_SETFLAGS
+#undef EXT4_CASEFOLD_FL
+
+#ifdef __linux__
+
+/* Define the ext2 ioctls for handling extra attributes */
+#define EXT2_IOC_GETFLAGS _IOR('f', 1, long)
+#define EXT2_IOC_SETFLAGS _IOW('f', 2, long)
+
+/* Case-insensitivity attribute */
+#define EXT4_CASEFOLD_FL 0x40000000
+
+#endif
+
 #ifndef MSG_CMSG_CLOEXEC
 #define MSG_CMSG_CLOEXEC 0
 #endif
@@ -103,7 +123,7 @@ sigset_t server_block_set;  /* signals to block during server calls */
 static int fd_socket = -1;  /* socket to exchange file descriptors with the server */
 static int initial_cwd = -1;
 static pid_t server_pid;
-static pthread_mutex_t fd_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t fd_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* atomically exchange a 64-bit value */
 static inline LONG64 interlocked_xchg64( LONG64 *dest, LONG64 val )
@@ -789,6 +809,21 @@ unsigned int server_wait( const union select_op *select_op, data_size_t size, UI
 }
 
 
+/* helper function to perform a server-side wait on an internal handle without
+ * using the fast synchronization path */
+unsigned int server_wait_for_object( HANDLE handle, BOOL alertable, const LARGE_INTEGER *timeout )
+{
+    union select_op select_op;
+    UINT flags = SELECT_INTERRUPTIBLE;
+
+    if (alertable) flags |= SELECT_ALERTABLE;
+
+    select_op.wait.op = SELECT_WAIT;
+    select_op.wait.handles[0] = wine_server_obj_handle( handle );
+    return server_wait( &select_op, offsetof( union select_op, wait.handles[1] ), flags, timeout );
+}
+
+
 /***********************************************************************
  *              NtContinue  (NTDLL.@)
  */
@@ -865,7 +900,7 @@ unsigned int server_queue_process_apc( HANDLE process, const union apc_call *cal
         }
         else
         {
-            NtWaitForSingleObject( handle, FALSE, NULL );
+            server_wait_for_object( handle, FALSE, NULL );
 
             SERVER_START_REQ( get_apc_result )
             {
@@ -1079,7 +1114,7 @@ static inline NTSTATUS get_cached_fd( HANDLE handle, int *fd, enum server_fd_typ
 /***********************************************************************
  *           remove_fd_from_cache
  */
-static int remove_fd_from_cache( HANDLE handle )
+int remove_fd_from_cache( HANDLE handle )
 {
     unsigned int entry, idx = handle_to_index( handle, &entry );
     int fd = -1;
@@ -1262,6 +1297,28 @@ static const char *init_server_dir( dev_t dev, ino_t ino )
 
 
 /***********************************************************************
+ *           set_case_insensitive
+ *
+ * Make the supplied directory case insensitive, if available.
+ */
+static void set_case_insensitive(const char *dir)
+{
+#if defined(EXT2_IOC_GETFLAGS) && defined(EXT2_IOC_SETFLAGS) && defined(EXT4_CASEFOLD_FL)
+    int flags, fd;
+
+    if ((fd = open(dir, O_RDONLY | O_NONBLOCK | O_LARGEFILE)) == -1)
+        return;
+    if (ioctl(fd, EXT2_IOC_GETFLAGS, &flags) != -1 && !(flags & EXT4_CASEFOLD_FL))
+    {
+        flags |= EXT4_CASEFOLD_FL;
+        ioctl(fd, EXT2_IOC_SETFLAGS, &flags);
+    }
+    close(fd);
+#endif
+}
+
+
+/***********************************************************************
  *           setup_config_dir
  *
  * Setup the wine configuration dir.
@@ -1297,6 +1354,7 @@ static int setup_config_dir(void)
     if (!mkdir( "dosdevices", 0777 ))
     {
         mkdir( "drive_c", 0777 );
+        set_case_insensitive( "drive_c" );
         symlink( "../drive_c", "dosdevices/c:" );
         symlink( "/", "dosdevices/z:" );
     }
@@ -1680,6 +1738,7 @@ void server_init_process_done(void)
 #ifdef __APPLE__
     send_server_task_port();
 #endif
+    if (__wine_needs_override_large_address_aware()) virtual_set_large_address_space();
 
     /* Install signal handlers; this cannot be done earlier, since we cannot
      * send exceptions to the debugger before the create process event that
@@ -1793,12 +1852,17 @@ NTSTATUS WINAPI NtDuplicateObject( HANDLE source_process, HANDLE source, HANDLE 
         return result.dup_handle.status;
     }
 
+    /* hold fd_cache_mutex to prevent the fd from being added again between the
+     * call to remove_fd_from_cache and close_handle */
     server_enter_uninterrupted_section( &fd_cache_mutex, &sigset );
 
     /* always remove the cached fd; if the server request fails we'll just
      * retrieve it again */
     if (options & DUPLICATE_CLOSE_SOURCE)
+    {
         fd = remove_fd_from_cache( source );
+        close_inproc_sync_obj( source );
+    }
 
     SERVER_START_REQ( dup_handle )
     {
@@ -1864,11 +1928,15 @@ NTSTATUS WINAPI NtClose( HANDLE handle )
     if (HandleToLong( handle ) >= ~5 && HandleToLong( handle ) <= ~0)
         return STATUS_SUCCESS;
 
+    /* hold fd_cache_mutex to prevent the fd from being added again between the
+     * call to remove_fd_from_cache and close_handle */
     server_enter_uninterrupted_section( &fd_cache_mutex, &sigset );
 
     /* always remove the cached fd; if the server request fails we'll just
      * retrieve it again */
     fd = remove_fd_from_cache( handle );
+
+    close_inproc_sync_obj( handle );
 
     SERVER_START_REQ( close_handle )
     {
