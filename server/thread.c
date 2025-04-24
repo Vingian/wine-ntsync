@@ -118,6 +118,7 @@ static const struct object_ops thread_apc_ops =
     NULL,                       /* unlink_name */
     no_open_file,               /* open_file */
     no_kernel_obj_list,         /* get_kernel_obj_list */
+    no_get_inproc_sync,         /* get_inproc_sync */
     no_close_handle,            /* close_handle */
     thread_apc_destroy          /* destroy */
 };
@@ -160,6 +161,7 @@ static const struct object_ops context_ops =
     NULL,                       /* unlink_name */
     no_open_file,               /* open_file */
     no_kernel_obj_list,         /* get_kernel_obj_list */
+    no_get_inproc_sync,         /* get_inproc_sync */
     no_close_handle,            /* close_handle */
     no_destroy                  /* destroy */
 };
@@ -187,6 +189,7 @@ static int thread_signaled( struct object *obj, struct wait_queue_entry *entry )
 static unsigned int thread_map_access( struct object *obj, unsigned int access );
 static void thread_poll_event( struct fd *fd, int event );
 static struct list *thread_get_kernel_obj_list( struct object *obj );
+static int thread_get_inproc_sync( struct object *obj, enum inproc_sync_type *type );
 static void destroy_thread( struct object *obj );
 
 static const struct object_ops thread_ops =
@@ -209,6 +212,7 @@ static const struct object_ops thread_ops =
     NULL,                       /* unlink_name */
     no_open_file,               /* open_file */
     thread_get_kernel_obj_list, /* get_kernel_obj_list */
+    thread_get_inproc_sync,     /* get_inproc_sync */
     no_close_handle,            /* close_handle */
     destroy_thread              /* destroy */
 };
@@ -415,6 +419,8 @@ static inline void init_thread_structure( struct thread *thread )
     thread->token           = NULL;
     thread->desc            = NULL;
     thread->desc_len        = 0;
+    thread->inproc_sync     = create_inproc_event( TRUE, FALSE );
+    thread->inproc_alert_event = NULL;
 
     thread->creation_time = current_time;
     thread->exit_time     = 0;
@@ -566,6 +572,14 @@ static struct list *thread_get_kernel_obj_list( struct object *obj )
     return &thread->kernel_object;
 }
 
+static int thread_get_inproc_sync( struct object *obj, enum inproc_sync_type *type )
+{
+    struct thread *thread = (struct thread *)obj;
+
+    *type = INPROC_SYNC_MANUAL_SERVER;
+    return thread->inproc_sync;
+}
+
 /* cleanup everything that is no longer needed by a dead thread */
 /* used by destroy_thread and kill_thread */
 static void cleanup_thread( struct thread *thread )
@@ -621,6 +635,8 @@ static void destroy_thread( struct object *obj )
     release_object( thread->process );
     if (thread->id) free_ptid( thread->id );
     if (thread->token) release_object( thread->token );
+    if (use_inproc_sync()) close( thread->inproc_sync );
+    if (thread->inproc_alert_event) release_object( thread->inproc_alert_event );
 }
 
 /* dump a thread on stdout for debugging purposes */
@@ -1368,7 +1384,12 @@ static int queue_apc( struct process *process, struct thread *thread, struct thr
     grab_object( apc );
     list_add_tail( queue, &apc->entry );
     if (!list_prev( queue, &apc->entry ))  /* first one */
+    {
         wake_thread( thread );
+
+        if (apc->call.type == APC_USER && thread->inproc_alert_event)
+            set_event( thread->inproc_alert_event );
+    }
 
     return 1;
 }
@@ -1400,6 +1421,8 @@ void thread_cancel_apc( struct thread *thread, struct object *owner, enum apc_ty
         apc->executed = 1;
         wake_up( &apc->obj, 0 );
         release_object( apc );
+        if (list_empty( &thread->user_apc ) && thread->inproc_alert_event)
+            reset_event( thread->inproc_alert_event );
         return;
     }
 }
@@ -1414,6 +1437,9 @@ static struct thread_apc *thread_dequeue_apc( struct thread *thread, int system 
     {
         apc = LIST_ENTRY( ptr, struct thread_apc, entry );
         list_remove( ptr );
+
+        if (list_empty( &thread->user_apc ) && thread->inproc_alert_event)
+            reset_event( thread->inproc_alert_event );
     }
     return apc;
 }
@@ -1511,6 +1537,7 @@ void kill_thread( struct thread *thread, int violent_death )
     kill_console_processes( thread, 0 );
     abandon_mutexes( thread );
     wake_up( &thread->obj, 0 );
+    set_inproc_event( thread->inproc_sync );
     if (violent_death) send_thread_signal( thread, SIGQUIT );
     cleanup_thread( thread );
     remove_process_thread( thread->process, thread );
@@ -2264,4 +2291,13 @@ DECL_HANDLER(get_next_thread)
     }
     set_error( STATUS_NO_MORE_ENTRIES );
     release_object( process );
+}
+
+DECL_HANDLER(get_inproc_alert_event)
+{
+    if (!current->inproc_alert_event)
+        current->inproc_alert_event = create_event( NULL, NULL, 0, 1, !list_empty( &current->user_apc ), NULL );
+
+    if (current->inproc_alert_event)
+        reply->handle = alloc_handle( current->process, current->inproc_alert_event, SYNCHRONIZE, 0 );
 }
