@@ -73,9 +73,7 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 		pushd wine-tkg-git/wine-tkg-git
 		if [ -n "$SERVER_PROTOCOL_VERSION" ]; then
 			echo "SERVER_PROTOCOL_VERSION=$SERVER_PROTOCOL_VERSION"
-			SERVER_PROTOCOL_VERSION_NEW=$((SERVER_PROTOCOL_VERSION + 1))
-			find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/-#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(-#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION}/" '{}' \;
-			find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/+#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(+#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_NEW}/" '{}' \;
+			for file in 'wine-tkg-patches/misc/fastsync'/*; do [ -f "$file" ] && awk -i inplace -v VERSION="$SERVER_PROTOCOL_VERSION" '/^[ \-\+][[:space:]]*#define[[:space:]]+SERVER_PROTOCOL_VERSION/ { if (substr($0, 1, 1) == "+") VERSION++; gsub(/[0-9]+/, VERSION) } { print }' "$file"; done
 		fi
 		sed -i '/_use_staging=/s/true/false/' customization.cfg
 		./non-makepkg-build.sh </dev/null || exit 0
@@ -90,9 +88,7 @@ if [ $(echo -e "${WINE_VERSION_TAG}\n${STAGING_VERSION_TAG}" | sort -V | tail -1
 	pushd wine-tkg-git/wine-tkg-git
 	if [ -n "$SERVER_PROTOCOL_VERSION_STAGING" ]; then
 		echo "SERVER_PROTOCOL_VERSION=$SERVER_PROTOCOL_VERSION_STAGING"
-		SERVER_PROTOCOL_VERSION_STAGING_NEW=$((SERVER_PROTOCOL_VERSION_STAGING + 1))
-		find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/-#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(-#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_STAGING}/" '{}' \;
-		find 'wine-tkg-patches/misc/fastsync' -type f -exec sed -i "/+#define[[:space:]]\+SERVER_PROTOCOL_VERSION/s/\(+#define[[:space:]]\+SERVER_PROTOCOL_VERSION[[:space:]]\+\)[0-9]\+/\1${SERVER_PROTOCOL_VERSION_STAGING_NEW}/" '{}' \;
+		for file in 'wine-tkg-patches/misc/fastsync'/*; do [ -f "$file" ] && awk -i inplace -v VERSION="$SERVER_PROTOCOL_VERSION_STAGING" '/^[ \-\+][[:space:]]*#define[[:space:]]+SERVER_PROTOCOL_VERSION/ { if (substr($0, 1, 1) == "+") VERSION++; gsub(/[0-9]+/, VERSION) } { print }' "$file"; done
 	fi
 	sed -i '/_use_staging=/s/false/true/' customization.cfg
 	./non-makepkg-build.sh </dev/null || exit 0
