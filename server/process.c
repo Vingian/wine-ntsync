@@ -107,7 +107,7 @@ static const struct object_ops process_ops =
     NULL,                        /* remove_queue */
     NULL,                        /* signaled */
     NULL,                        /* satisfied */
-    no_signal,                   /* signal */
+    NULL,                        /* signal */
     no_get_fd,                   /* get_fd */
     process_get_sync,            /* get_sync */
     process_map_access,          /* map_access */
@@ -140,7 +140,7 @@ static const struct fd_ops process_fd_ops =
 struct startup_info
 {
     struct object               obj;            /* object header */
-    struct event_sync          *sync;           /* sync object for wait/signal */
+    struct object              *sync;           /* sync object for wait/signal */
     struct process             *process;        /* created process */
     data_size_t                 info_size;      /* size of startup info */
     data_size_t                 data_size;      /* size of whole startup data */
@@ -160,7 +160,7 @@ static const struct object_ops startup_info_ops =
     NULL,                          /* remove_queue */
     NULL,                          /* signaled */
     NULL,                          /* satisfied */
-    no_signal,                     /* signal */
+    NULL,                          /* signal */
     no_get_fd,                     /* get_fd */
     startup_info_get_sync,         /* get_sync */
     default_map_access,            /* map_access */
@@ -200,7 +200,7 @@ static void job_destroy( struct object *obj );
 struct job
 {
     struct object        obj;               /* object header */
-    struct event_sync   *sync;              /* sync object for wait/signal */
+    struct object       *sync;              /* sync object for wait/signal */
     struct list          process_list;      /* list of processes */
     int                  num_processes;     /* count of running processes */
     int                  total_processes;   /* count of processes which have been assigned */
@@ -222,7 +222,7 @@ static const struct object_ops job_ops =
     NULL,                          /* remove_queue */
     NULL,                          /* signaled */
     NULL,                          /* satisfied */
-    no_signal,                     /* signal */
+    NULL,                          /* signal */
     no_get_fd,                     /* get_fd */
     job_get_sync,                  /* get_sync */
     default_map_access,            /* map_access */

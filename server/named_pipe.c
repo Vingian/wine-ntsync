@@ -116,13 +116,13 @@ static const struct object_ops named_pipe_ops =
     sizeof(struct named_pipe),    /* size */
     &no_type,                     /* type */
     named_pipe_dump,              /* dump */
-    no_add_queue,                 /* add_queue */
+    NULL,                         /* add_queue */
     NULL,                         /* remove_queue */
     NULL,                         /* signaled */
     NULL,                         /* satisfied */
-    no_signal,                    /* signal */
+    NULL,                         /* signal */
     no_get_fd,                    /* get_fd */
-    default_get_sync,             /* get_sync */
+    no_get_sync,                  /* get_sync */
     named_pipe_map_access,        /* map_access */
     default_get_sd,               /* get_sd */
     default_set_sd,               /* set_sd */
@@ -169,7 +169,7 @@ static const struct object_ops pipe_server_ops =
     NULL,                         /* remove_queue */
     NULL,                         /* signaled */
     NULL,                         /* satisfied */
-    no_signal,                    /* signal */
+    NULL,                         /* signal */
     pipe_end_get_fd,              /* get_fd */
     default_fd_get_sync,          /* get_sync */
     default_map_access,           /* map_access */
@@ -214,7 +214,7 @@ static const struct object_ops pipe_client_ops =
     NULL,                         /* remove_queue */
     NULL,                         /* signaled */
     NULL,                         /* satisfied */
-    no_signal,                    /* signal */
+    NULL,                         /* signal */
     pipe_end_get_fd,              /* get_fd */
     default_fd_get_sync,          /* get_sync */
     default_map_access,           /* map_access */
@@ -259,13 +259,13 @@ static const struct object_ops named_pipe_device_ops =
     sizeof(struct named_pipe_device), /* size */
     &device_type,                     /* type */
     named_pipe_device_dump,           /* dump */
-    no_add_queue,                     /* add_queue */
+    NULL,                             /* add_queue */
     NULL,                             /* remove_queue */
     NULL,                             /* signaled */
-    no_satisfied,                     /* satisfied */
-    no_signal,                        /* signal */
+    NULL,                             /* satisfied */
+    NULL,                             /* signal */
     no_get_fd,                        /* get_fd */
-    default_get_sync,                 /* get_sync */
+    no_get_sync,                      /* get_sync */
     default_map_access,               /* map_access */
     default_get_sd,                   /* get_sd */
     default_set_sd,                   /* set_sd */
@@ -295,7 +295,7 @@ static const struct object_ops named_pipe_device_file_ops =
     NULL,                                    /* remove_queue */
     NULL,                                    /* signaled */
     NULL,                                    /* satisfied */
-    no_signal,                               /* signal */
+    NULL,                                    /* signal */
     named_pipe_device_file_get_fd,           /* get_fd */
     default_fd_get_sync,                     /* get_sync */
     default_map_access,                      /* map_access */
@@ -346,7 +346,7 @@ static const struct object_ops named_pipe_dir_ops =
     NULL,                                    /* remove_queue */
     NULL,                                    /* signaled */
     NULL,                                    /* satisfied */
-    no_signal,                               /* signal */
+    NULL,                                    /* signal */
     named_pipe_dir_get_fd,                   /* get_fd */
     default_fd_get_sync,                     /* get_sync */
     default_map_access,                      /* map_access */

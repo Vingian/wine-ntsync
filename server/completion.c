@@ -73,7 +73,7 @@ struct completion_wait
 struct completion
 {
     struct object       obj;
-    struct event_sync  *sync;
+    struct object      *sync;
     struct list         queue;
     struct list         wait_queue;
     unsigned int        depth;
@@ -93,7 +93,7 @@ static const struct object_ops completion_wait_ops =
     remove_queue,                   /* remove_queue */
     completion_wait_signaled,       /* signaled */
     completion_wait_satisfied,      /* satisfied */
-    no_signal,                      /* signal */
+    NULL,                           /* signal */
     no_get_fd,                      /* get_fd */
     default_get_sync,               /* get_sync */
     default_map_access,             /* map_access */
@@ -168,7 +168,7 @@ static const struct object_ops completion_ops =
     NULL,                      /* remove_queue */
     NULL,                      /* signaled */
     NULL,                      /* satisfied */
-    no_signal,                 /* signal */
+    NULL,                      /* signal */
     no_get_fd,                 /* get_fd */
     completion_get_sync,       /* get_sync */
     default_map_access,        /* map_access */

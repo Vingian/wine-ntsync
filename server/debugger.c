@@ -43,7 +43,7 @@ enum debug_event_state { EVENT_QUEUED, EVENT_SENT, EVENT_DELAYED, EVENT_CONTINUE
 struct debug_event
 {
     struct object          obj;       /* object header */
-    struct event_sync     *sync;      /* sync object for wait/signal */
+    struct object         *sync;      /* sync object for wait/signal */
     struct list            entry;     /* entry in event queue */
     struct thread         *sender;    /* thread which sent this event */
     struct file           *file;      /* file object for events that need one */
@@ -70,7 +70,7 @@ struct type_descr debug_obj_type =
 struct debug_obj
 {
     struct object        obj;         /* object header */
-    struct event_sync   *sync;       /* sync object for wait/signal */
+    struct object       *sync;       /* sync object for wait/signal */
     struct list          event_queue; /* pending events queue */
     unsigned int         flags;       /* debug flags */
 };
@@ -89,7 +89,7 @@ static const struct object_ops debug_event_ops =
     NULL,                          /* remove_queue */
     NULL,                          /* signaled */
     NULL,                          /* satisfied */
-    no_signal,                     /* signal */
+    NULL,                          /* signal */
     no_get_fd,                     /* get_fd */
     debug_event_get_sync,          /* get_sync */
     default_map_access,            /* map_access */
@@ -118,7 +118,7 @@ static const struct object_ops debug_obj_ops =
     NULL,                          /* remove_queue */
     NULL,                          /* signaled */
     NULL,                          /* satisfied */
-    no_signal,                     /* signal */
+    NULL,                          /* signal */
     no_get_fd,                     /* get_fd */
     debug_obj_get_sync,            /* get_sync */
     default_map_access,            /* map_access */

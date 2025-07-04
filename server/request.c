@@ -86,13 +86,13 @@ static const struct object_ops master_socket_ops =
     sizeof(struct master_socket),  /* size */
     &no_type,                      /* type */
     master_socket_dump,            /* dump */
-    no_add_queue,                  /* add_queue */
+    NULL,                          /* add_queue */
     NULL,                          /* remove_queue */
     NULL,                          /* signaled */
     NULL,                          /* satisfied */
-    no_signal,                     /* signal */
+    NULL,                          /* signal */
     no_get_fd,                     /* get_fd */
-    default_get_sync,              /* get_sync */
+    no_get_sync,                   /* get_sync */
     default_map_access,            /* map_access */
     default_get_sd,                /* get_sd */
     default_set_sd,                /* set_sd */

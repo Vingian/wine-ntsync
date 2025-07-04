@@ -134,6 +134,7 @@ struct ntuser_thread_info
     UINT           default_imc;       /* default input context */
     UINT64         client_imm;        /* client IMM thread info */
     UINT64         wmchar_data;       /* client data for WM_CHAR mappings */
+    UINT           server_queue;      /* handle of the server-side queue */
 };
 
 static inline struct ntuser_thread_info *NtUserGetThreadInfo(void)
@@ -1579,6 +1580,10 @@ struct hid_packet
 };
 
 C_ASSERT(sizeof(struct hid_packet) == offsetof(struct hid_packet, data[0]));
+
+#define SEND_HWMSG_INJECTED 1
+#define SEND_HWMSG_NO_RAW   2
+#define SEND_HWMSG_NO_MSG   4
 
 struct send_hardware_input_params
 {

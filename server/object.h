@@ -56,6 +56,7 @@ struct type_descr
     struct unicode_str name;          /* type name */
     unsigned int       valid_access;  /* mask for valid access bits */
     struct generic_map mapping;       /* generic access mapping */
+    unsigned int       signal_access; /* mask for valid signal access */
     unsigned int       index;         /* index in global array of types */
     unsigned int       obj_count;     /* count of objects of this type */
     unsigned int       handle_count;  /* count of handles of this type */
@@ -80,8 +81,8 @@ struct object_ops
     int  (*signaled)(struct object *,struct wait_queue_entry *);
     /* wait satisfied */
     void (*satisfied)(struct object *,struct wait_queue_entry *);
-    /* signal an object */
-    int  (*signal)(struct object *, unsigned int);
+    /* signal/reset an object */
+    int  (*signal)(struct object *,int);
     /* return an fd object that can be used to read/write from the object */
     struct fd *(*get_fd)(struct object *);
     /* return a sync that can be used to wait/signal the object */
@@ -168,15 +169,16 @@ extern void release_object( void *obj );
 extern struct object *find_object( const struct namespace *namespace, const struct unicode_str *name,
                                    unsigned int attributes );
 extern struct object *find_object_index( const struct namespace *namespace, unsigned int index );
-extern int no_add_queue( struct object *obj, struct wait_queue_entry *entry );
-extern void no_satisfied( struct object *obj, struct wait_queue_entry *entry );
-extern int no_signal( struct object *obj, unsigned int access );
 extern struct fd *no_get_fd( struct object *obj );
 extern struct object *default_get_sync( struct object *obj );
+extern struct object *no_get_sync( struct object *obj );
 static inline struct object *get_obj_sync( struct object *obj ) { return obj->ops->get_sync( obj ); }
 extern unsigned int default_map_access( struct object *obj, unsigned int access );
 extern struct security_descriptor *default_get_sd( struct object *obj );
 extern int default_set_sd( struct object *obj, const struct security_descriptor *sd, unsigned int set_info );
+extern struct security_descriptor *set_sd_from_token_internal( const struct security_descriptor *sd,
+                                                               const struct security_descriptor *old_sd,
+                                                               unsigned int set_info, struct token *token );
 extern int set_sd_defaults_from_token( struct object *obj, const struct security_descriptor *sd,
                                        unsigned int set_info, struct token *token );
 extern WCHAR *no_get_full_name( struct object *obj, data_size_t max, data_size_t *ret_len );
@@ -215,13 +217,12 @@ static inline void *mem_append( void *ptr, const void *src, data_size_t len )
 
 /* event functions */
 
-struct event_sync;
 struct event;
 struct keyed_event;
 
-extern struct event_sync *create_event_sync( int manual, int signaled );
-extern void signal_sync( struct event_sync *sync );
-extern void reset_sync( struct event_sync *sync );
+extern struct object *create_event_sync( int manual, int signaled );
+extern void signal_sync( struct object *sync );
+extern void reset_sync( struct object *sync );
 
 extern struct event *create_event( struct object *root, const struct unicode_str *name,
                                    unsigned int attr, int manual_reset, int initial_state,
@@ -236,6 +237,15 @@ extern void reset_event( struct event *event );
 /* mutex functions */
 
 extern void abandon_mutexes( struct thread *thread );
+
+/* in-process synchronization functions */
+
+extern int get_inproc_device_fd(void);
+extern struct object *create_inproc_event_sync( int manual, int signaled );
+extern struct object *create_inproc_semaphore_sync( unsigned int initial, unsigned int max );
+extern struct object *create_inproc_mutex_sync( thread_id_t owner, unsigned int count );
+extern void abandon_inproc_mutexes( thread_id_t owner );
+extern int get_inproc_sync_fd( struct object *obj, unsigned char *type );
 
 /* serial functions */
 

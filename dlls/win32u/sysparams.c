@@ -7046,6 +7046,7 @@ BOOL is_exiting_thread( DWORD tid )
 static void thread_detach(void)
 {
     struct user_thread_info *thread_info = get_user_thread_info();
+    HANDLE server_queue = UlongToHandle( thread_info->client_info.server_queue );
 
     destroy_thread_windows();
     user_driver->pThreadDetach();
@@ -7053,7 +7054,11 @@ static void thread_detach(void)
     free( thread_info->rawinput );
 
     cleanup_imm_thread();
-    NtClose( thread_info->server_queue );
+    if (server_queue)
+    {
+        NtClose( server_queue );
+        thread_info->client_info.server_queue = 0;
+    }
     free( thread_info->session_data );
 
     exiting_thread_id = 0;
