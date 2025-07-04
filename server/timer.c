@@ -53,7 +53,7 @@ struct type_descr timer_type =
 struct timer
 {
     struct object        obj;       /* object header */
-    struct event_sync   *sync;      /* sync object for wait/signal */
+    struct object       *sync;      /* sync object for wait/signal */
     int                  manual;    /* manual reset */
     int                  signaled;  /* current signaled state */
     unsigned int         period;    /* timer period in ms */
@@ -77,7 +77,7 @@ static const struct object_ops timer_ops =
     NULL,                      /* remove_queue */
     NULL,                      /* signaled */
     NULL,                      /* satisfied */
-    no_signal,                 /* signal */
+    NULL,                      /* signal */
     no_get_fd,                 /* get_fd */
     timer_get_sync,            /* get_sync */
     default_map_access,        /* map_access */

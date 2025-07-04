@@ -48,6 +48,7 @@ struct type_descr mutex_type =
         STANDARD_RIGHTS_EXECUTE | SYNCHRONIZE,
         MUTANT_ALL_ACCESS
     },
+    SYNCHRONIZE,                          /* signal access */
 };
 
 struct mutex_sync
@@ -62,6 +63,7 @@ struct mutex_sync
 static void mutex_sync_dump( struct object *obj, int verbose );
 static int mutex_sync_signaled( struct object *obj, struct wait_queue_entry *entry );
 static void mutex_sync_satisfied( struct object *obj, struct wait_queue_entry *entry );
+static int mutex_sync_signal( struct object *obj, int signal );
 static void mutex_sync_destroy( struct object *obj );
 
 static const struct object_ops mutex_sync_ops =
@@ -73,7 +75,7 @@ static const struct object_ops mutex_sync_ops =
     remove_queue,              /* remove_queue */
     mutex_sync_signaled,       /* signaled */
     mutex_sync_satisfied,      /* satisfied */
-    no_signal,                 /* signal */
+    mutex_sync_signal,         /* signal */
     no_get_fd,                 /* get_fd */
     default_get_sync,          /* get_sync */
     default_map_access,        /* map_access */
@@ -152,9 +154,18 @@ static void mutex_sync_satisfied( struct object *obj, struct wait_queue_entry *e
     mutex->abandoned = 0;
 }
 
-static struct mutex_sync *create_mutex_sync( int owned )
+static int mutex_sync_signal( struct object *obj, int signal )
+{
+    struct mutex_sync *mutex = (struct mutex_sync *)obj;
+    assert( obj->ops == &mutex_sync_ops );
+    return do_release( mutex, current, 1 );
+}
+
+static struct object *create_mutex_sync( int owned )
 {
     struct mutex_sync *mutex;
+
+    if (get_inproc_device_fd() >= 0) return create_inproc_mutex_sync( owned ? current->id : 0, owned ? 1 : 0 );
 
     if (!(mutex = alloc_object( &mutex_sync_ops ))) return NULL;
     mutex->count = 0;
@@ -162,18 +173,17 @@ static struct mutex_sync *create_mutex_sync( int owned )
     mutex->abandoned = 0;
     if (owned) do_grab( mutex, current );
 
-    return mutex;
+    return &mutex->obj;
 }
 
 struct mutex
 {
     struct object       obj;             /* object header */
-    struct mutex_sync  *sync;            /* mutex sync object */
+    struct object      *sync;            /* mutex sync object */
 };
 
 static void mutex_dump( struct object *obj, int verbose );
 static struct object *mutex_get_sync( struct object *obj );
-static int mutex_signal( struct object *obj, unsigned int access );
 static void mutex_destroy( struct object *obj );
 
 static const struct object_ops mutex_ops =
@@ -185,7 +195,7 @@ static const struct object_ops mutex_ops =
     NULL,                      /* remove_queue */
     NULL,                      /* signaled */
     NULL,                      /* satisfied */
-    mutex_signal,              /* signal */
+    NULL,                      /* signal */
     no_get_fd,                 /* get_fd */
     mutex_get_sync,            /* get_sync */
     default_map_access,        /* map_access */
@@ -234,13 +244,15 @@ void abandon_mutexes( struct thread *thread )
         mutex->abandoned = 1;
         do_release( mutex, thread, mutex->count );
     }
+
+    abandon_inproc_mutexes( thread->id );
 }
 
 static void mutex_dump( struct object *obj, int verbose )
 {
     struct mutex *mutex = (struct mutex *)obj;
     assert( obj->ops == &mutex_ops );
-    mutex->sync->obj.ops->dump( &mutex->sync->obj, verbose );
+    mutex->sync->ops->dump( mutex->sync, verbose );
 }
 
 static struct object *mutex_get_sync( struct object *obj )
@@ -248,19 +260,6 @@ static struct object *mutex_get_sync( struct object *obj )
     struct mutex *mutex = (struct mutex *)obj;
     assert( obj->ops == &mutex_ops );
     return grab_object( mutex->sync );
-}
-
-static int mutex_signal( struct object *obj, unsigned int access )
-{
-    struct mutex *mutex = (struct mutex *)obj;
-    assert( obj->ops == &mutex_ops );
-
-    if (!(access & SYNCHRONIZE))
-    {
-        set_error( STATUS_ACCESS_DENIED );
-        return 0;
-    }
-    return do_release( mutex->sync, current, 1 );
 }
 
 static void mutex_destroy( struct object *obj )
@@ -311,8 +310,11 @@ DECL_HANDLER(release_mutex)
     if ((mutex = (struct mutex *)get_handle_obj( current->process, req->handle,
                                                  0, &mutex_ops )))
     {
-        reply->prev_count = mutex->sync->count;
-        do_release( mutex->sync, current, 1 );
+        struct mutex_sync *sync = (struct mutex_sync *)mutex->sync;
+        assert( mutex->sync->ops == &mutex_sync_ops );
+
+        reply->prev_count = sync->count;
+        do_release( sync, current, 1 );
         release_object( mutex );
     }
 }
@@ -325,9 +327,12 @@ DECL_HANDLER(query_mutex)
     if ((mutex = (struct mutex *)get_handle_obj( current->process, req->handle,
                                                  MUTANT_QUERY_STATE, &mutex_ops )))
     {
-        reply->count = mutex->sync->count;
-        reply->owned = (mutex->sync->owner == current);
-        reply->abandoned = mutex->sync->abandoned;
+        struct mutex_sync *sync = (struct mutex_sync *)mutex->sync;
+        assert( mutex->sync->ops == &mutex_sync_ops );
+
+        reply->count = sync->count;
+        reply->owned = (sync->owner == current);
+        reply->abandoned = sync->abandoned;
 
         release_object( mutex );
     }

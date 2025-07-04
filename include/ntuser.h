@@ -134,6 +134,7 @@ struct ntuser_thread_info
     UINT           default_imc;       /* default input context */
     UINT64         client_imm;        /* client IMM thread info */
     UINT64         wmchar_data;       /* client data for WM_CHAR mappings */
+    UINT           server_queue;      /* handle of the server-side queue */
 };
 
 static inline struct ntuser_thread_info *NtUserGetThreadInfo(void)

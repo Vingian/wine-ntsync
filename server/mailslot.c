@@ -83,7 +83,7 @@ static const struct object_ops mailslot_ops =
     NULL,                      /* remove_queue */
     NULL,                      /* signaled */
     NULL,                      /* satisfied */
-    no_signal,                 /* signal */
+    NULL,                      /* signal */
     mailslot_get_fd,           /* get_fd */
     default_fd_get_sync,       /* get_sync */
     mailslot_map_access,       /* map_access */
@@ -141,13 +141,13 @@ static const struct object_ops mail_writer_ops =
     sizeof(struct mail_writer), /* size */
     &file_type,                 /* type */
     mail_writer_dump,           /* dump */
-    no_add_queue,               /* add_queue */
+    NULL,                       /* add_queue */
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
     NULL,                       /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* signal */
     mail_writer_get_fd,         /* get_fd */
-    default_get_sync,           /* get_sync */
+    no_get_sync,                /* get_sync */
     mail_writer_map_access,     /* map_access */
     default_get_sd,             /* get_sd */
     default_set_sd,             /* set_sd */
@@ -207,13 +207,13 @@ static const struct object_ops mailslot_device_ops =
     sizeof(struct mailslot_device), /* size */
     &device_type,                   /* type */
     mailslot_device_dump,           /* dump */
-    no_add_queue,                   /* add_queue */
+    NULL,                           /* add_queue */
     NULL,                           /* remove_queue */
     NULL,                           /* signaled */
-    no_satisfied,                   /* satisfied */
-    no_signal,                      /* signal */
+    NULL,                           /* satisfied */
+    NULL,                           /* signal */
     no_get_fd,                      /* get_fd */
-    default_get_sync,               /* get_sync */
+    no_get_sync,                    /* get_sync */
     default_map_access,             /* map_access */
     default_get_sd,                 /* get_sd */
     default_set_sd,                 /* set_sd */
@@ -242,7 +242,7 @@ static const struct object_ops mailslot_device_file_ops =
     NULL,                                   /* remove_queue */
     NULL,                                   /* signaled */
     NULL,                                   /* satisfied */
-    no_signal,                              /* signal */
+    NULL,                                   /* signal */
     mailslot_device_file_get_fd,            /* get_fd */
     default_fd_get_sync,                    /* get_sync */
     default_map_access,                     /* map_access */

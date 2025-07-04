@@ -129,7 +129,7 @@ struct fd
 {
     struct object        obj;         /* object header */
     const struct fd_ops *fd_ops;      /* file descriptor operations */
-    struct event_sync   *sync;        /* sync object for wait/signal */
+    struct object       *sync;        /* sync object for wait/signal */
     struct inode        *inode;       /* inode that this fd belongs to */
     struct list          inode_entry; /* entry in inode fd list */
     struct closed_fd    *closed;      /* structure to store the unix fd at destroy time */
@@ -169,7 +169,7 @@ static const struct object_ops fd_ops =
     NULL,                     /* remove_queue */
     NULL,                     /* signaled */
     NULL,                     /* satisfied */
-    no_signal,                /* signal */
+    NULL,                     /* signal */
     no_get_fd,                /* get_fd */
     fd_get_sync,              /* get_sync */
     default_map_access,       /* map_access */
@@ -207,13 +207,13 @@ static const struct object_ops device_ops =
     sizeof(struct device),    /* size */
     &no_type,                 /* type */
     device_dump,              /* dump */
-    no_add_queue,             /* add_queue */
+    NULL,                     /* add_queue */
     NULL,                     /* remove_queue */
     NULL,                     /* signaled */
     NULL,                     /* satisfied */
-    no_signal,                /* signal */
+    NULL,                     /* signal */
     no_get_fd,                /* get_fd */
-    default_get_sync,         /* get_sync */
+    no_get_sync,              /* get_sync */
     default_map_access,       /* map_access */
     default_get_sd,           /* get_sd */
     default_set_sd,           /* set_sd */
@@ -248,13 +248,13 @@ static const struct object_ops inode_ops =
     sizeof(struct inode),     /* size */
     &no_type,                 /* type */
     inode_dump,               /* dump */
-    no_add_queue,             /* add_queue */
+    NULL,                     /* add_queue */
     NULL,                     /* remove_queue */
     NULL,                     /* signaled */
     NULL,                     /* satisfied */
-    no_signal,                /* signal */
+    NULL,                     /* signal */
     no_get_fd,                /* get_fd */
-    default_get_sync,         /* get_sync */
+    no_get_sync,              /* get_sync */
     default_map_access,       /* map_access */
     default_get_sd,           /* get_sd */
     default_set_sd,           /* set_sd */
@@ -273,7 +273,7 @@ static const struct object_ops inode_ops =
 struct file_lock
 {
     struct object       obj;         /* object header */
-    struct event_sync  *sync;        /* sync object for wait/signal */
+    struct object      *sync;        /* sync object for wait/signal */
     struct fd          *fd;          /* fd owning this lock */
     struct list         fd_entry;    /* entry in list of locks on a given fd */
     struct list         inode_entry; /* entry in inode list of locks */
@@ -297,7 +297,7 @@ static const struct object_ops file_lock_ops =
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
     NULL,                       /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* signal */
     no_get_fd,                  /* get_fd */
     file_lock_get_sync,         /* get_sync */
     default_map_access,         /* map_access */

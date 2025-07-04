@@ -63,13 +63,13 @@ static const struct object_ops irp_call_ops =
     sizeof(struct irp_call),          /* size */
     &no_type,                         /* type */
     irp_call_dump,                    /* dump */
-    no_add_queue,                     /* add_queue */
+    NULL,                             /* add_queue */
     NULL,                             /* remove_queue */
     NULL,                             /* signaled */
     NULL,                             /* satisfied */
-    no_signal,                        /* signal */
+    NULL,                             /* signal */
     no_get_fd,                        /* get_fd */
-    default_get_sync,                 /* get_sync */
+    no_get_sync,                      /* get_sync */
     default_map_access,               /* map_access */
     default_get_sd,                   /* get_sd */
     default_set_sd,                   /* set_sd */
@@ -89,7 +89,7 @@ static const struct object_ops irp_call_ops =
 struct device_manager
 {
     struct object          obj;            /* object header */
-    struct event_sync     *sync;           /* sync object for wait/signal */
+    struct object         *sync;           /* sync object for wait/signal */
     struct list            devices;        /* list of devices */
     struct list            requests;       /* list of pending irps across all devices */
     struct irp_call       *current_call;   /* call currently executed on client side */
@@ -109,7 +109,7 @@ static const struct object_ops device_manager_ops =
     NULL,                             /* remove_queue */
     NULL,                             /* signaled */
     NULL,                             /* satisfied */
-    no_signal,                        /* signal */
+    NULL,                             /* signal */
     no_get_fd,                        /* get_fd */
     device_manager_get_sync,          /* get_sync */
     default_map_access,               /* map_access */
@@ -163,13 +163,13 @@ static const struct object_ops device_ops =
     sizeof(struct device),            /* size */
     &device_type,                     /* type */
     device_dump,                      /* dump */
-    no_add_queue,                     /* add_queue */
+    NULL,                             /* add_queue */
     NULL,                             /* remove_queue */
     NULL,                             /* signaled */
-    no_satisfied,                     /* satisfied */
-    no_signal,                        /* signal */
+    NULL,                             /* satisfied */
+    NULL,                             /* signal */
     no_get_fd,                        /* get_fd */
-    default_get_sync,                 /* get_sync */
+    no_get_sync,                      /* get_sync */
     default_map_access,               /* map_access */
     default_get_sd,                   /* get_sd */
     default_set_sd,                   /* set_sd */
@@ -220,7 +220,7 @@ static const struct object_ops device_file_ops =
     NULL,                             /* remove_queue */
     NULL,                             /* signaled */
     NULL,                             /* satisfied */
-    no_signal,                        /* signal */
+    NULL,                             /* signal */
     device_file_get_fd,               /* get_fd */
     default_fd_get_sync,              /* get_sync */
     default_map_access,               /* map_access */

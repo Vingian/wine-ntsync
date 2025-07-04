@@ -50,7 +50,8 @@ struct inflight_fd
 struct thread
 {
     struct object          obj;           /* object header */
-    struct event_sync     *sync;          /* sync object for wait/signal */
+    struct object         *sync;          /* sync object for wait/signal */
+    struct object         *alert_sync;    /* thread alert sync */
     struct list            entry;         /* entry in system-wide thread list */
     struct list            proc_entry;    /* entry in per-process thread list */
     struct list            desktop_entry; /* entry in per-desktop thread list */
@@ -115,6 +116,7 @@ extern void set_wait_status( struct wait_queue_entry *entry, int status );
 extern void stop_thread( struct thread *thread );
 extern int wake_thread( struct thread *thread );
 extern int wake_thread_queue_entry( struct wait_queue_entry *entry );
+extern unsigned int check_signal_access( struct object *obj, unsigned int access );
 extern int add_queue( struct object *obj, struct wait_queue_entry *entry );
 extern void remove_queue( struct object *obj, struct wait_queue_entry *entry );
 extern void kill_thread( struct thread *thread, int violent_death );

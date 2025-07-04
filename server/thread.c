@@ -85,7 +85,7 @@ struct thread_wait
 struct thread_apc
 {
     struct object       obj;      /* object header */
-    struct event_sync  *sync;     /* sync object for wait/signal */
+    struct object      *sync;     /* sync object for wait/signal */
     struct list         entry;    /* queue linked list */
     struct thread      *caller;   /* thread that queued this apc */
     struct object      *owner;    /* object that queued this apc */
@@ -108,7 +108,7 @@ static const struct object_ops thread_apc_ops =
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
     NULL,                       /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* signal */
     no_get_fd,                  /* get_fd */
     thread_apc_get_sync,        /* get_sync */
     default_map_access,         /* map_access */
@@ -130,7 +130,7 @@ static const struct object_ops thread_apc_ops =
 struct context
 {
     struct object           obj;        /* object header */
-    struct event_sync      *sync;       /* sync object for wait/signal */
+    struct object          *sync;       /* sync object for wait/signal */
     unsigned int            status;     /* status of the context */
     struct context_data     regs[2];    /* context data */
 };
@@ -153,7 +153,7 @@ static const struct object_ops context_ops =
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
     NULL,                       /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* signal */
     no_get_fd,                  /* get_fd */
     context_get_sync,           /* get_sync */
     default_map_access,         /* map_access */
@@ -203,7 +203,7 @@ static const struct object_ops thread_ops =
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
     NULL,                       /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* signal */
     no_get_fd,                  /* get_fd */
     thread_get_sync,            /* get_sync */
     thread_map_access,          /* map_access */
@@ -396,6 +396,7 @@ static inline void init_thread_structure( struct thread *thread )
     int i;
 
     thread->sync            = NULL;
+    thread->alert_sync      = NULL;
     thread->unix_pid        = -1;  /* not known yet */
     thread->unix_tid        = -1;  /* not known yet */
     thread->context         = NULL;
@@ -550,6 +551,7 @@ struct thread *create_thread( int fd, struct process *process, const struct secu
     }
     if (!(thread->request_fd = create_anonymous_fd( &thread_fd_ops, fd, &thread->obj, 0 ))) goto error;
     if (!(thread->sync = create_event_sync( 1, 0 ))) goto error;
+    if (get_inproc_device_fd() >= 0 && !(thread->alert_sync = create_inproc_event_sync( 1, 0 ))) goto error;
 
     if (process->desktop)
     {
@@ -644,6 +646,7 @@ static void destroy_thread( struct object *obj )
     release_object( thread->process );
     if (thread->id) free_ptid( thread->id );
     if (thread->token) release_object( thread->token );
+    if (thread->alert_sync) release_object( thread->alert_sync );
     if (thread->sync) release_object( thread->sync );
 }
 
@@ -999,8 +1002,15 @@ static void object_sync_remove_queue( struct object *obj, struct wait_queue_entr
 
 static int object_sync_add_queue( struct object *obj, struct wait_queue_entry *entry )
 {
-    struct object *sync = get_obj_sync( obj );
-    int ret = sync->ops->add_queue( sync, entry );
+    struct object *sync;
+    int ret;
+
+    if (!(sync = get_obj_sync( obj )))
+    {
+        set_error( STATUS_OBJECT_TYPE_MISMATCH );
+        return 0;
+    }
+    ret = sync->ops->add_queue( sync, entry );
     release_object( sync );
     return ret;
 }
@@ -1009,6 +1019,26 @@ static int object_sync_signaled( struct object *obj, struct wait_queue_entry *en
 {
     struct object *sync = get_obj_sync( obj );
     int ret = sync->ops->signaled( sync, entry );
+    release_object( sync );
+    return ret;
+}
+
+void signal_sync( struct object *obj )
+{
+    assert( obj->ops->signal );
+    obj->ops->signal( obj, 1 );
+}
+
+void reset_sync( struct object *obj )
+{
+    assert( obj->ops->signal );
+    obj->ops->signal( obj, 0 );
+}
+
+static int object_sync_signal( struct object *obj )
+{
+    struct object *sync = get_obj_sync( obj );
+    int ret = sync->ops->signal( sync, -1 );
     release_object( sync );
     return ret;
 }
@@ -1242,6 +1272,14 @@ static void thread_timeout( void *ptr )
     wake_thread( thread );
 }
 
+/* check if an event flag, a semaphore or a mutex can be signaled */
+unsigned int check_signal_access( struct object *obj, unsigned int access )
+{
+    if (!obj->ops->type->signal_access) return STATUS_OBJECT_TYPE_MISMATCH;
+    if (!(access & obj->ops->type->signal_access)) return STATUS_ACCESS_DENIED;
+    return STATUS_SUCCESS;
+}
+
 /* try signaling an event flag, a semaphore or a mutex */
 static int signal_object( obj_handle_t handle )
 {
@@ -1251,7 +1289,9 @@ static int signal_object( obj_handle_t handle )
     obj = get_handle_obj( current->process, handle, 0, NULL );
     if (obj)
     {
-        ret = obj->ops->signal( obj, get_handle_access( current->process, handle ));
+        unsigned int status, access = get_handle_access( current->process, handle );
+        if ((status = check_signal_access( obj, access ))) set_error( status );
+        else ret = object_sync_signal( obj );
         release_object( obj );
     }
     return ret;
@@ -1426,7 +1466,11 @@ static int queue_apc( struct process *process, struct thread *thread, struct thr
     grab_object( apc );
     list_add_tail( queue, &apc->entry );
     if (!list_prev( queue, &apc->entry ))  /* first one */
+    {
+        if (apc->call.type == APC_USER && thread->alert_sync)
+            signal_sync( thread->alert_sync );
         wake_thread( thread );
+    }
 
     return 1;
 }
@@ -1458,6 +1502,8 @@ void thread_cancel_apc( struct thread *thread, struct object *owner, enum apc_ty
         apc->executed = 1;
         signal_sync( apc->sync );
         release_object( apc );
+        if (list_empty( &thread->user_apc ) && thread->alert_sync)
+            reset_sync( thread->alert_sync );
         return;
     }
 }
@@ -1472,6 +1518,8 @@ static struct thread_apc *thread_dequeue_apc( struct thread *thread, int system 
     {
         apc = LIST_ENTRY( ptr, struct thread_apc, entry );
         list_remove( ptr );
+        if (list_empty( &thread->user_apc ) && thread->alert_sync)
+            reset_sync( thread->alert_sync );
     }
     return apc;
 }
@@ -1694,6 +1742,8 @@ static int init_thread( struct thread *thread, int reply_fd, int wait_fd )
 DECL_HANDLER(init_first_thread)
 {
     struct process *process = current->process;
+    unsigned char type;
+    int fd;
 
     if (!init_thread( current, req->reply_fd, req->wait_fd )) return;
 
@@ -1716,11 +1766,25 @@ DECL_HANDLER(init_first_thread)
     reply->server_start = server_start_time;
     set_reply_data( supported_machines,
                     min( supported_machines_count * sizeof(unsigned short), get_reply_max_size() ));
+
+    if ((fd = get_inproc_device_fd()) >= 0)
+    {
+        reply->inproc_device = get_process_id( process ) | 1;
+        send_client_fd( process, fd, reply->inproc_device );
+    }
+    if (current->alert_sync && (fd = get_inproc_sync_fd( current->alert_sync, &type )) >= 0)
+    {
+        reply->alert_handle = get_thread_id( current ) | 1;
+        send_client_fd( process, fd, reply->alert_handle );
+    }
 }
 
 /* initialize a new thread */
 DECL_HANDLER(init_thread)
 {
+    unsigned char type;
+    int fd;
+
     if (!init_thread( current, req->reply_fd, req->wait_fd )) return;
 
     if (!is_valid_address(req->teb))
@@ -1740,6 +1804,12 @@ DECL_HANDLER(init_thread)
     set_thread_affinity( current, current->affinity );
 
     reply->suspend = (current->suspend || current->process->suspend || current->context != NULL);
+
+    if (current->alert_sync && (fd = get_inproc_sync_fd( current->alert_sync, &type )) >= 0)
+    {
+        reply->alert_handle = get_thread_id( current ) | 1;
+        send_client_fd( current->process, fd, reply->alert_handle );
+    }
 }
 
 /* terminate a thread */

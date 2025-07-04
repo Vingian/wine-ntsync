@@ -487,7 +487,7 @@ static const struct object_ops sock_ops =
     NULL,                         /* remove_queue */
     NULL,                         /* signaled */
     NULL,                         /* satisfied */
-    no_signal,                    /* signal */
+    NULL,                         /* signal */
     sock_get_fd,                  /* get_fd */
     default_fd_get_sync,          /* get_sync */
     default_map_access,           /* map_access */
@@ -3693,13 +3693,13 @@ static const struct object_ops ifchange_ops =
     sizeof(struct ifchange), /* size */
     &no_type,                /* type */
     ifchange_dump,           /* dump */
-    no_add_queue,            /* add_queue */
+    NULL,                    /* add_queue */
     NULL,                    /* remove_queue */
     NULL,                    /* signaled */
-    no_satisfied,            /* satisfied */
-    no_signal,               /* signal */
+    NULL,                    /* satisfied */
+    NULL,                    /* signal */
     ifchange_get_fd,         /* get_fd */
-    default_get_sync,        /* get_sync */
+    no_get_sync,             /* get_sync */
     default_map_access,      /* map_access */
     default_get_sd,          /* get_sd */
     default_set_sd,          /* set_sd */
@@ -3915,13 +3915,13 @@ static const struct object_ops socket_device_ops =
     sizeof(struct object),      /* size */
     &device_type,               /* type */
     socket_device_dump,         /* dump */
-    no_add_queue,               /* add_queue */
+    NULL,                       /* add_queue */
     NULL,                       /* remove_queue */
     NULL,                       /* signaled */
-    no_satisfied,               /* satisfied */
-    no_signal,                  /* signal */
+    NULL,                       /* satisfied */
+    NULL,                       /* signal */
     no_get_fd,                  /* get_fd */
-    default_get_sync,           /* get_sync */
+    no_get_sync,                /* get_sync */
     default_map_access,         /* map_access */
     default_get_sd,             /* get_sd */
     default_set_sd,             /* set_sd */

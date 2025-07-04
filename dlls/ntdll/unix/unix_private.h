@@ -108,6 +108,7 @@ struct ntdll_thread_data
     int                       request_fd;    /* fd for sending server requests */
     int                       reply_fd;      /* fd for receiving server replies */
     int                       wait_fd[2];    /* fd for sleeping server requests */
+    int                       alert_fd;      /* fd for user apc alerts */
     BOOL                      allow_writes;  /* ThreadAllowWrites flags */
     pthread_t                 pthread_id;    /* pthread thread id */
     void                     *kernel_stack;  /* stack for thread startup and kernel syscalls */
@@ -197,8 +198,10 @@ extern unsigned int supported_machines_count;
 extern USHORT supported_machines[8];
 extern BOOL process_exiting;
 extern HANDLE keyed_event;
+extern int inproc_device_fd;
 extern timeout_t server_start_time;
 extern sigset_t server_block_set;
+extern pthread_mutex_t fd_cache_mutex;
 extern struct _KUSER_SHARED_DATA *user_shared_data;
 #ifdef __i386__
 extern struct ldt_copy __wine_ldt_copy;
@@ -228,15 +231,17 @@ extern unsigned int server_select( const union select_op *select_op, data_size_t
                                    timeout_t abs_timeout, struct context_data *context, struct user_apc *user_apc );
 extern unsigned int server_wait( const union select_op *select_op, data_size_t size, UINT flags,
                                  const LARGE_INTEGER *timeout );
+extern unsigned int server_wait_for_object( HANDLE handle, BOOL alertable, const LARGE_INTEGER *timeout );
 extern unsigned int server_queue_process_apc( HANDLE process, const union apc_call *call,
                                               union apc_result *result );
 extern int server_get_unix_fd( HANDLE handle, unsigned int wanted_access, int *unix_fd,
                                int *needs_close, enum server_fd_type *type, unsigned int *options );
 extern void wine_server_send_fd( int fd );
+extern int wine_server_receive_fd( obj_handle_t *handle );
 extern void process_exit_wrapper( int status ) DECLSPEC_NORETURN;
 extern size_t server_init_process(void);
 extern void server_init_process_done(void);
-extern void server_init_thread( void *entry_point, BOOL *suspend );
+extern void server_init_thread( struct ntdll_thread_data *data, BOOL *suspend );
 extern int server_pipe( int fd[2] );
 
 extern void fpux_to_fpu( I386_FLOATING_SAVE_AREA *fpu, const XSAVE_FORMAT *fpux );
@@ -373,6 +378,7 @@ extern void set_async_direct_result( HANDLE *async_handle, unsigned int options,
                                      NTSTATUS status, ULONG_PTR information, BOOL mark_pending );
 
 extern NTSTATUS unixcall_wine_dbg_write( void *args );
+extern NTSTATUS unixcall_wine_needs_override_large_address_aware( void *args );
 extern NTSTATUS unixcall_wine_server_call( void *args );
 extern NTSTATUS unixcall_wine_server_fd_to_handle( void *args );
 extern NTSTATUS unixcall_wine_server_handle_to_fd( void *args );
@@ -387,6 +393,8 @@ extern NTSTATUS wow64_wine_spawnvp( void *args );
 
 extern void dbg_init(void);
 
+extern void close_inproc_sync( HANDLE handle );
+
 extern NTSTATUS call_user_apc_dispatcher( CONTEXT *context_ptr, ULONG_PTR arg1, ULONG_PTR arg2, ULONG_PTR arg3,
                                           PNTAPCFUNC func, NTSTATUS status );
 extern NTSTATUS call_user_exception_dispatcher( EXCEPTION_RECORD *rec, CONTEXT *context );
@@ -395,6 +403,7 @@ extern void call_raise_user_exception_dispatcher(void);
 #define IMAGE_DLLCHARACTERISTICS_PREFER_NATIVE 0x0010 /* Wine extension */
 
 #define TICKSPERSEC 10000000
+#define NSECPERSEC 1000000000
 #define SECS_1601_TO_1970  ((369 * 365 + 89) * (ULONGLONG)86400)
 
 static inline ULONGLONG ticks_from_time_t( time_t time )
@@ -466,7 +475,7 @@ static inline struct async_data server_async( HANDLE handle, struct async_fileio
 
 static inline NTSTATUS wait_async( HANDLE handle, BOOL alertable )
 {
-    return NtWaitForSingleObject( handle, alertable, NULL );
+    return server_wait_for_object( handle, alertable, NULL );
 }
 
 static inline BOOL in_wow64_call(void)
@@ -588,5 +597,7 @@ static inline NTSTATUS map_section( HANDLE mapping, void **ptr, SIZE_T *size, UL
     return NtMapViewOfSection( mapping, NtCurrentProcess(), ptr, user_space_wow_limit,
                                0, NULL, size, ViewShare, 0, protect );
 }
+
+BOOL CDECL __wine_needs_override_large_address_aware(void);
 
 #endif /* __NTDLL_UNIX_PRIVATE_H */
